@@ -1,0 +1,4 @@
+EsqliteWrapper
+==============
+
+** TODO: Add description **
