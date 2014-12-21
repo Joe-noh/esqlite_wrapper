@@ -37,29 +37,23 @@ defmodule EsqliteWrapper.Connection do
   ## GenServer callbacks
 
   def init([path]) do
-    path
-    |> String.to_char_list
-    |> :esqlite3.open
+    String.to_char_list(path) |> :esqlite3.open
   end
 
   def handle_call({:query, sql}, _from, db) do
-    result = sql
-      |> String.to_char_list
-      |> :esqlite3.q(db)
+    result = String.to_char_list(sql) |> :esqlite3.q(db)
 
     {:reply, result, db}
   end
 
   def handle_call({:query, sql, args}, _from, db) do
-    result = sql
-      |> String.to_char_list
-      |> :esqlite3.q(args, db)
+    result = String.to_char_list(sql) |> :esqlite3.q(args, db)
 
     {:reply, result, db}
   end
 
   def handle_call({:prepare, sql}, _from, db) do
-    {:ok, prepared} = sql |> String.to_char_list |> :esqlite3.prepare(db)
+    {:ok, prepared} = String.to_char_list(sql) |> :esqlite3.prepare(db)
 
     {:reply, prepared, db}
   end
