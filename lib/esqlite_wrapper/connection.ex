@@ -36,6 +36,11 @@ defmodule EsqliteWrapper.Connection do
     GenServer.call(pid, {:step, prepared})
   end
 
+  @spec reset(pid, String.t) :: :ok | {:error, any}
+  def reset(pid, prepared) do
+    GenServer.call(pid, {:reset, prepared})
+  end
+
   @spec bind(pid, String.t, [any]) :: :ok | {:error, any}
   def bind(pid, prepared, params) do
     GenServer.call(pid, {:bind, prepared, params})
@@ -130,6 +135,10 @@ defmodule EsqliteWrapper.Connection do
       :'$done' -> {:reply, :done, db}
       other    -> {:reply, other, db}
     end
+  end
+
+  def handle_call({:reset, prepared}, _from, db) do
+    {:reply, :esqlite3.reset(prepared), db}
   end
 
   def handle_call({:bind, prepared, params}, _from, db) do

@@ -54,6 +54,17 @@ defmodule ConnectionTest do
     assert {:name, :age} == DB.column_names(context.pid, prepared)
   end
 
+  test "prepare/2 and reset/2", context do
+    prepared = DB.prepare(context.pid, "SELECT name FROM test WHERE name LIKE ?1")
+    DB.bind(context.pid, prepared, ["%a%"])
+    assert {:row, {"mary"}} == DB.step(context.pid, prepared)
+    assert {:row, {"alex"}} == DB.step(context.pid, prepared)
+
+    DB.reset(context.pid, prepared)
+
+    assert {:row, {"mary"}} == DB.step(context.pid, prepared)
+  end
+
   test "transaction and commit manually", context do
     DB.begin(context.pid)
     DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
