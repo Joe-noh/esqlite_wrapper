@@ -5,30 +5,37 @@ defmodule EsqliteWrapper.Connection do
     GenServer.start_link(__MODULE__, [path])
   end
 
+  @spec query(pid, String.t) :: [tuple]
   def query(pid, sql) do
     GenServer.call(pid, {:query, sql})
   end
 
+  @spec query(pid, String.t, [any]) :: [tuple]
   def query(pid, sql, args) do
     GenServer.call(pid, {:query, sql, args})
   end
 
+  @spec execute(pid, String.t) :: :ok | {:error, any}
   def execute(pid, sql) do
     GenServer.call(pid, {:execute, sql})
   end
 
+  @spec execute(pid, String.t, [any]) :: :ok | {:error, any}
   def execute(pid, sql, args) do
     GenServer.call(pid, {:execute, sql, args})
   end
 
+  @spec prepare(pid, String.t) :: {:ok, String.t} | {:error, any}
   def prepare(pid, sql) do
     GenServer.call(pid, {:prepare, sql})
   end
 
+  @spec step(pid, String.t) :: tuple
   def step(pid, prepared) do
     GenServer.call(pid, {:step, prepared})
   end
 
+  @spec bind(pid, String.t, [any]) :: :ok | {:error, any}
   def bind(pid, prepared, params) do
     GenServer.call(pid, {:bind, prepared, params})
   end
@@ -55,22 +62,27 @@ defmodule EsqliteWrapper.Connection do
     end
   end
 
+  @spec begin(pid) :: :ok | {:error, any}
   def begin(pid) do
     GenServer.call(pid, {:execute, "BEGIN"})
   end
 
+  @spec commit(pid) :: :ok | {:error, any}
   def commit(pid) do
     GenServer.call(pid, {:execute, "COMMIT"})
   end
 
+  @spec rollback(pid) :: :ok | {:error, any}
   def rollback(pid) do
     GenServer.call(pid, {:execute, "ROLLBACK"})
   end
 
+  @spec column_names(pid, String.t) :: {:atom}
   def column_names(pid, prepared) do
     GenServer.call(pid, {:column_names, prepared})
   end
 
+  @spec close(pid) :: :ok | {:error, any}
   def close(pid) do
     GenServer.cast(pid, :close)
   end
