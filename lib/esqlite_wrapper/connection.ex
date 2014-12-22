@@ -33,25 +33,25 @@ defmodule EsqliteWrapper.Connection do
     GenServer.call(pid, {:bind, prepared, params})
   end
 
+  @spec transaction(pid, (() -> any)) :: {:ok, any} | {:error, any}
   def transaction(pid, fun) do
     case begin(pid) do
-      :ok ->
-        try_then_commit(pid, fun)
-      {:error, {type, msg}} ->
-        rollback(pid)
-        :erlang.raise(type, msg, System.stacktrace)
+      :ok -> try_then_commit(pid, fun)
+      {:error, {type, msg}} -> :erlang.raise(type, msg, System.stacktrace)
     end
   end
 
+  @doc false
+  @spec try_then_commit(pid, (() -> any)) :: {:ok, any} | {:error, any}
   defp try_then_commit(pid, fun) do
     try do
-      fun.()
+      result = fun.()
       case commit(pid) do
-        :ok -> :ok
+        :ok -> {:ok, result}
         {:error, {type, msg}} -> :erlang.raise(type, msg, System.stacktrace)
       end
     rescue
-      e -> rollback(pid); raise e
+      e -> rollback(pid); {:error, e}
     end
   end
 
