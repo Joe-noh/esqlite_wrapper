@@ -33,7 +33,7 @@ defmodule ConnectionTest do
     assert {:row, {22}} == DB.step(context.pid, prepared)
     assert {:row, {28}} == DB.step(context.pid, prepared)
     assert {:row, {33}} == DB.step(context.pid, prepared)
-    assert :'$done'     == DB.step(context.pid, prepared)
+    assert :done        == DB.step(context.pid, prepared)
   end
 
   test "prepare/2 and bind/2", context do
@@ -43,7 +43,7 @@ defmodule ConnectionTest do
     DB.bind(context.pid, prepared, [25])
     assert {:row, {28}} == DB.step(context.pid, prepared)
     assert {:row, {33}} == DB.step(context.pid, prepared)
-    assert :'$done'     == DB.step(context.pid, prepared)
+    assert :done        == DB.step(context.pid, prepared)
   end
 
   test "prepare/2 and column_names/2", context do
@@ -82,14 +82,13 @@ defmodule ConnectionTest do
   end
 
   test "failed transaction/2", context do
-    assert_raise RuntimeError, fn ->
-      DB.transaction context.pid, fn ->
-        DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-        DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
-        raise RuntimeError, message: "oops"
-      end
+    result = DB.transaction context.pid, fn ->
+      DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
+      DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
+      raise RuntimeError, message: "oops"
     end
 
+    assert {:error, %RuntimeError{}} = result
     assert [{3}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
   end
 

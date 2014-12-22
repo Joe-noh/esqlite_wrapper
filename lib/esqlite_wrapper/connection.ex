@@ -1,76 +1,89 @@
 defmodule EsqliteWrapper.Connection do
   use GenServer
 
+  @spec start_link(String.t) :: {:ok, pid} | {:error, any}
   def start_link(path) do
     GenServer.start_link(__MODULE__, [path])
   end
 
+  @spec query(pid, String.t) :: [tuple]
   def query(pid, sql) do
     GenServer.call(pid, {:query, sql})
   end
 
+  @spec query(pid, String.t, [any]) :: [tuple]
   def query(pid, sql, args) do
     GenServer.call(pid, {:query, sql, args})
   end
 
+  @spec execute(pid, String.t) :: :ok | {:error, any}
   def execute(pid, sql) do
     GenServer.call(pid, {:execute, sql})
   end
 
+  @spec execute(pid, String.t, [any]) :: :ok | {:error, any}
   def execute(pid, sql, args) do
     GenServer.call(pid, {:execute, sql, args})
   end
 
+  @spec prepare(pid, String.t) :: {:ok, String.t} | {:error, any}
   def prepare(pid, sql) do
     GenServer.call(pid, {:prepare, sql})
   end
 
+  @spec step(pid, String.t) :: :done | {:row, tuple} | {:error, any}
   def step(pid, prepared) do
     GenServer.call(pid, {:step, prepared})
   end
 
+  @spec bind(pid, String.t, [any]) :: :ok | {:error, any}
   def bind(pid, prepared, params) do
     GenServer.call(pid, {:bind, prepared, params})
   end
 
+  @spec transaction(pid, (() -> any)) :: {:ok, any} | {:error, any}
   def transaction(pid, fun) do
     case begin(pid) do
-      :ok ->
-        try_then_commit(pid, fun)
-      {:error, {type, msg}} ->
-        rollback(pid)
-        :erlang.raise(type, msg, System.stacktrace)
+      :ok -> try_then_commit(pid, fun)
+      {:error, {type, msg}} -> :erlang.raise(type, msg, System.stacktrace)
     end
   end
 
+  @doc false
+  @spec try_then_commit(pid, (() -> any)) :: {:ok, any} | {:error, any}
   defp try_then_commit(pid, fun) do
     try do
-      fun.()
+      result = fun.()
       case commit(pid) do
-        :ok -> :ok
+        :ok -> {:ok, result}
         {:error, {type, msg}} -> :erlang.raise(type, msg, System.stacktrace)
       end
     rescue
-      e -> rollback(pid); raise e
+      e -> rollback(pid); {:error, e}
     end
   end
 
+  @spec begin(pid) :: :ok | {:error, any}
   def begin(pid) do
     GenServer.call(pid, {:execute, "BEGIN"})
   end
 
+  @spec commit(pid) :: :ok | {:error, any}
   def commit(pid) do
     GenServer.call(pid, {:execute, "COMMIT"})
   end
 
+  @spec rollback(pid) :: :ok | {:error, any}
   def rollback(pid) do
     GenServer.call(pid, {:execute, "ROLLBACK"})
   end
 
+  @spec column_names(pid, String.t) :: {:atom}
   def column_names(pid, prepared) do
     GenServer.call(pid, {:column_names, prepared})
   end
 
+  @spec close(pid) :: :ok | {:error, any}
   def close(pid) do
     GenServer.cast(pid, :close)
   end
@@ -113,7 +126,10 @@ defmodule EsqliteWrapper.Connection do
   end
 
   def handle_call({:step, prepared}, _from, db) do
-    {:reply, :esqlite3.step(prepared), db}
+    case :esqlite3.step(prepared) do
+      :'$done' -> {:reply, :done, db}
+      other    -> {:reply, other, db}
+    end
   end
 
   def handle_call({:bind, prepared, params}, _from, db) do
