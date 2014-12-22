@@ -1,6 +1,7 @@
 defmodule EsqliteWrapper.Connection do
   use GenServer
 
+  @spec start_link(String.t) :: {:ok, pid} | {:error, any}
   def start_link(path) do
     GenServer.start_link(__MODULE__, [path])
   end
@@ -30,7 +31,7 @@ defmodule EsqliteWrapper.Connection do
     GenServer.call(pid, {:prepare, sql})
   end
 
-  @spec step(pid, String.t) :: tuple
+  @spec step(pid, String.t) :: :done | {:row, tuple} | {:error, any}
   def step(pid, prepared) do
     GenServer.call(pid, {:step, prepared})
   end
@@ -125,7 +126,10 @@ defmodule EsqliteWrapper.Connection do
   end
 
   def handle_call({:step, prepared}, _from, db) do
-    {:reply, :esqlite3.step(prepared), db}
+    case :esqlite3.step(prepared) do
+      :'$done' -> {:reply, :done, db}
+      other    -> {:reply, other, db}
+    end
   end
 
   def handle_call({:bind, prepared, params}, _from, db) do

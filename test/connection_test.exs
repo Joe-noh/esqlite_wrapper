@@ -33,7 +33,7 @@ defmodule ConnectionTest do
     assert {:row, {22}} == DB.step(context.pid, prepared)
     assert {:row, {28}} == DB.step(context.pid, prepared)
     assert {:row, {33}} == DB.step(context.pid, prepared)
-    assert :'$done'     == DB.step(context.pid, prepared)
+    assert :done        == DB.step(context.pid, prepared)
   end
 
   test "prepare/2 and bind/2", context do
@@ -43,7 +43,7 @@ defmodule ConnectionTest do
     DB.bind(context.pid, prepared, [25])
     assert {:row, {28}} == DB.step(context.pid, prepared)
     assert {:row, {33}} == DB.step(context.pid, prepared)
-    assert :'$done'     == DB.step(context.pid, prepared)
+    assert :done        == DB.step(context.pid, prepared)
   end
 
   test "prepare/2 and column_names/2", context do
