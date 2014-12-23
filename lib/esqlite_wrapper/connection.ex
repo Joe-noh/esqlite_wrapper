@@ -102,31 +102,26 @@ defmodule EsqliteWrapper.Connection do
 
   def handle_call({:query, sql}, _from, db) do
     result = String.to_char_list(sql) |> :esqlite3.q(db)
-
     {:reply, result, db}
   end
 
   def handle_call({:query, sql, args}, _from, db) do
     result = String.to_char_list(sql) |> :esqlite3.q(args, db)
-
     {:reply, result, db}
   end
 
   def handle_call({:execute, sql}, _from, db) do
     result = String.to_char_list(sql) |> :esqlite3.exec(db)
-
     {:reply, result, db}
   end
 
   def handle_call({:execute, sql, args}, _from, db) do
     result = String.to_char_list(sql) |> :esqlite3.exec(args, db)
-
     {:reply, result, db}
   end
 
   def handle_call({:prepare, sql}, _from, db) do
     {:ok, prepared} = String.to_char_list(sql) |> :esqlite3.prepare(db)
-
     {:reply, prepared, db}
   end
 
