@@ -1,94 +1,95 @@
 defmodule TransactionTest do
   use ExUnit.Case
-  alias EsqliteWrapper.Connection, as: DB
+  use TestHelper
 
   setup do
-    {:ok, pid} = DB.start_link(":memory:")
+    {:ok, p} = DB.start_link(":memory:")
 
-    TestHelper.create_table pid
-    TestHelper.populate_people pid
+    create_table p
+    populate_people p
 
-    on_exit fn -> DB.close(pid) end
+    on_exit fn -> DB.close(p) end
 
-    {:ok, [pid: pid]}
+    {:ok, [pid: p]}
   end
 
-  test "transaction and commit manually", context do
-    DB.begin(context.pid)
-    DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-    DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
-    DB.commit(context.pid)
+  @insert_sql "INSERT INTO test VALUES (?1, ?2)"
 
-    assert [{5}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
+  @beth ["beth", 19]
+  @jack ["jack", 25]
+  @nick ["nick", 29]
+  @anne ["anne", 30]
+
+  test "transaction and commit manually", context do
+    DB.begin(pid)
+    DB.query(pid, @insert_sql, @beth)
+    DB.query(pid, @insert_sql, @jack)
+    DB.commit(pid)
+
+    assert 5 == count_all(pid)
   end
 
   test "transaction and rollback manually", context do
-    DB.begin(context.pid)
-    DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-    DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
-    DB.rollback(context.pid)
+    DB.begin(pid)
+    DB.query(pid, @insert_sql, @beth)
+    DB.query(pid, @insert_sql, @jack)
+    DB.rollback(pid)
 
-    assert [{3}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
+    assert 3 == count_all(pid)
   end
 
   test "transaction returns {:ok, fun.()}", context do
-    result = DB.transaction context.pid, fn -> :return_value end
+    result = DB.transaction pid, fn -> :return_value end
     assert result == {:ok, :return_value}
   end
 
   test "success transaction/2", context do
-    DB.transaction context.pid, fn ->
-      DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-      DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
+    DB.transaction pid, fn ->
+      DB.query(pid, @insert_sql, @beth)
+      DB.query(pid, @insert_sql, @jack)
     end
 
-    assert [{5}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
+    assert 5 == count_all(pid)
   end
 
   test "failed transaction/2", context do
-    result = DB.transaction context.pid, fn ->
-      DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-      DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
-      raise RuntimeError, message: "oops"
+    result = DB.transaction pid, fn ->
+      DB.query(pid, @insert_sql, @beth)
+      DB.query(pid, @insert_sql, @jack)
+      raise RuntimeError, message: "Oops"
     end
 
     assert {:error, %RuntimeError{}} = result
-    assert [{3}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
+    assert 3 == count_all(pid)
   end
 
   test "nested transaction", context do
-    pid = context.pid
-
     DB.transaction pid, fn ->
-      DB.query(pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
+      DB.query(pid, @insert_sql, @beth)
       DB.transaction pid, fn ->
-        DB.query(pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
+        DB.query(pid, @insert_sql, @jack)
         raise "Oops"
       end
     end
 
-    assert [{1}] == DB.query(pid, "SELECT COUNT(*) FROM test WHERE name = 'beth'")
-    assert [{0}] == DB.query(pid, "SELECT COUNT(*) FROM test WHERE name = 'jack'")
+    assert saved?(pid, @beth)
+    refute saved?(pid, @jack)
   end
 
   test "deeply nested transaction", context do
-    pid = context.pid
-
     DB.transaction pid, fn ->
-      DB.query(pid, "INSERT INTO test VALUES ('beth', 19)")
+      DB.query(pid, @insert_sql, @beth)
       DB.transaction pid, fn ->
-        DB.transaction pid, fn ->
-          DB.query(pid, "INSERT INTO test VALUES ('jack', 25)")
-        end
-        DB.query(pid, "INSERT INTO test VALUES ('nick', 29)")
+        DB.transaction pid, fn -> DB.query(pid, @insert_sql, @jack) end
+        DB.query(pid, @insert_sql, @nick)
         raise "Oops"
       end
-      DB.query(pid, "INSERT INTO test VALUES ('anne', 30)")
+      DB.query(pid, @insert_sql, @anne)
     end
 
-    assert [{1}] == DB.query(pid, "SELECT COUNT(*) FROM test WHERE name = 'beth'")
-    assert [{0}] == DB.query(pid, "SELECT COUNT(*) FROM test WHERE name = 'jack'")
-    assert [{0}] == DB.query(pid, "SELECT COUNT(*) FROM test WHERE name = 'nick'")
-    assert [{1}] == DB.query(pid, "SELECT COUNT(*) FROM test WHERE name = 'anne'")
+    assert saved?(pid, @beth)
+    refute saved?(pid, @jack)
+    refute saved?(pid, @nick)
+    assert saved?(pid, @anne)
   end
 end
