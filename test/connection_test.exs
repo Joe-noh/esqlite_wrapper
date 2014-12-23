@@ -65,44 +65,6 @@ defmodule ConnectionTest do
     assert {:row, {"mary"}} == DB.step(context.pid, prepared)
   end
 
-  test "transaction and commit manually", context do
-    DB.begin(context.pid)
-    DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-    DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
-    DB.commit(context.pid)
-
-    assert [{5}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
-  end
-
-  test "transaction and rollback manually", context do
-    DB.begin(context.pid)
-    DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-    DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
-    DB.rollback(context.pid)
-
-    assert [{3}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
-  end
-
-  test "success transaction/2", context do
-    DB.transaction context.pid, fn ->
-      DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-      DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
-    end
-
-    assert [{5}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
-  end
-
-  test "failed transaction/2", context do
-    result = DB.transaction context.pid, fn ->
-      DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-      DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
-      raise RuntimeError, message: "oops"
-    end
-
-    assert {:error, %RuntimeError{}} = result
-    assert [{3}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
-  end
-
   test "close/1", context do
     DB.close(context.pid)
 

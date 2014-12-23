@@ -70,17 +70,17 @@ defmodule EsqliteWrapper.Connection do
 
   @spec begin(pid) :: :ok | {:error, any}
   def begin(pid) do
-    GenServer.call(pid, {:execute, "BEGIN"})
+    GenServer.call(pid, :begin)
   end
 
   @spec commit(pid) :: :ok | {:error, any}
   def commit(pid) do
-    GenServer.call(pid, {:execute, "COMMIT"})
+    GenServer.call(pid, :commit)
   end
 
   @spec rollback(pid) :: :ok | {:error, any}
   def rollback(pid) do
-    GenServer.call(pid, {:execute, "ROLLBACK"})
+    GenServer.call(pid, :rollback)
   end
 
   @spec column_names(pid, String.t) :: {:atom}
@@ -97,58 +97,85 @@ defmodule EsqliteWrapper.Connection do
   ## GenServer callbacks
 
   def init([path]) do
-    String.to_char_list(path) |> :esqlite3.open
+    {:ok, db} = String.to_char_list(path) |> :esqlite3.open
+
+    {:ok, %{db: db, level: 0}}
   end
 
-  def handle_call({:query, sql}, _from, db) do
+  def handle_call({:query, sql}, _from, %{db: db} = state) do
     result = String.to_char_list(sql) |> :esqlite3.q(db)
-    {:reply, result, db}
+    {:reply, result, state}
   end
 
-  def handle_call({:query, sql, args}, _from, db) do
+  def handle_call({:query, sql, args}, _from, %{db: db} = state) do
     result = String.to_char_list(sql) |> :esqlite3.q(args, db)
-    {:reply, result, db}
+    {:reply, result, state}
   end
 
-  def handle_call({:execute, sql}, _from, db) do
+  def handle_call({:execute, sql}, _from, %{db: db} = state) do
     result = String.to_char_list(sql) |> :esqlite3.exec(db)
-    {:reply, result, db}
+    {:reply, result, state}
   end
 
-  def handle_call({:execute, sql, args}, _from, db) do
+  def handle_call({:execute, sql, args}, _from, %{db: db} = state) do
     result = String.to_char_list(sql) |> :esqlite3.exec(args, db)
-    {:reply, result, db}
+    {:reply, result, state}
   end
 
-  def handle_call({:prepare, sql}, _from, db) do
+  def handle_call({:prepare, sql}, _from, %{db: db} = state) do
     {:ok, prepared} = String.to_char_list(sql) |> :esqlite3.prepare(db)
-    {:reply, prepared, db}
+    {:reply, prepared, state}
   end
 
-  def handle_call({:step, prepared}, _from, db) do
+  def handle_call({:step, prepared}, _from, state) do
     case :esqlite3.step(prepared) do
-      :'$done' -> {:reply, :done, db}
-      other    -> {:reply, other, db}
+      :'$done' -> {:reply, :done, state}
+      other    -> {:reply, other, state}
     end
   end
 
-  def handle_call({:reset, prepared}, _from, db) do
-    {:reply, :esqlite3.reset(prepared), db}
+  def handle_call({:reset, prepared}, _from, state) do
+    {:reply, :esqlite3.reset(prepared), state}
   end
 
-  def handle_call({:bind, prepared, params}, _from, db) do
-    {:reply, :esqlite3.bind(prepared, params), db}
+  def handle_call({:bind, prepared, params}, _from, state) do
+    {:reply, :esqlite3.bind(prepared, params), state}
   end
 
-  def handle_call({:column_names, prepared}, _from, db) do
-    {:reply, :esqlite3.column_names(prepared), db}
+  def handle_call(:begin, _from, %{db: db, level: 0} = state) do
+    {:reply, :esqlite3.exec('BEGIN;', db), %{state | level: 1}}
   end
 
-  def handle_cast(:close, db) do
-    {:stop, :normal, db}
+  def handle_call(:begin, _from, %{db: db, level: n} = state) do
+    {:reply, :esqlite3.exec('SAVEPOINT S#{n};', db), %{state | level: n+1}}
   end
 
-  def terminate(_reason, db) do
+  def handle_call(:commit, _from, %{db: db, level: 1} = state) do
+    {:reply, :esqlite3.exec('COMMIT;', db), %{state | level: 0}}
+  end
+
+  def handle_call(:commit, _from, %{db: db, level: n} = state) do
+    {:reply, :esqlite3.exec('RELEASE S#{n}', db), %{state | level: n-1}}
+  end
+
+  def handle_call(:rollback, _from, %{db: db, level: 1} = state) do
+    {:reply, :esqlite3.exec('ROLLBACK;', db), %{state | level: 0}}
+  end
+
+  def handle_call(:rollback, _from, %{db: db, level: n} = state) do
+    result = :esqlite3.exec('ROLLBACK TO SAVEPOINT S#{n-1};', db)
+    {:reply, result, %{state | level: n-1}}
+  end
+
+  def handle_call({:column_names, prepared}, _from, state) do
+    {:reply, :esqlite3.column_names(prepared), state}
+  end
+
+  def handle_cast(:close, state) do
+    {:stop, :normal, state}
+  end
+
+  def terminate(_reason, %{db: db}) do
     :esqlite3.close(db)
   end
 end
