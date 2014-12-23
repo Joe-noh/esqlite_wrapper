@@ -15,8 +15,8 @@ defmodule TransactionTest do
 
   test "transaction and commit manually", context do
     DB.begin(context.pid)
-    DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-    DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
+    DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
+    DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
     DB.commit(context.pid)
 
     assert [{5}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
@@ -24,17 +24,22 @@ defmodule TransactionTest do
 
   test "transaction and rollback manually", context do
     DB.begin(context.pid)
-    DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-    DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
+    DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
+    DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
     DB.rollback(context.pid)
 
     assert [{3}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
   end
 
+  test "transaction returns {:ok, fun.()}", context do
+    result = DB.transaction context.pid, fn -> :return_value end
+    assert result == {:ok, :return_value}
+  end
+
   test "success transaction/2", context do
     DB.transaction context.pid, fn ->
-      DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-      DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
+      DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
+      DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
     end
 
     assert [{5}] == DB.query(context.pid, "SELECT COUNT(*) FROM test")
@@ -42,8 +47,8 @@ defmodule TransactionTest do
 
   test "failed transaction/2", context do
     result = DB.transaction context.pid, fn ->
-      DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
-      DB.execute(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
+      DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
+      DB.query(context.pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
       raise RuntimeError, message: "oops"
     end
 
@@ -52,6 +57,21 @@ defmodule TransactionTest do
   end
 
   test "nested transaction", context do
+    pid = context.pid
+
+    DB.transaction pid, fn ->
+      DB.query(pid, "INSERT INTO test VALUES (?1, ?2)", ["beth", 19])
+      DB.transaction pid, fn ->
+        DB.query(pid, "INSERT INTO test VALUES (?1, ?2)", ["jack", 25])
+        raise "Oops"
+      end
+    end
+
+    assert [{1}] == DB.query(pid, "SELECT COUNT(*) FROM test WHERE name = 'beth'")
+    assert [{0}] == DB.query(pid, "SELECT COUNT(*) FROM test WHERE name = 'jack'")
+  end
+
+  test "deeply nested transaction", context do
     pid = context.pid
 
     DB.transaction pid, fn ->
