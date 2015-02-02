@@ -1,4 +1,4 @@
-defmodule EsqliteWrapper.Mixfile do
+defmodule Exqlite.Mixfile do
   use Mix.Project
 
   def project do

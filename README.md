@@ -1,4 +1,4 @@
-## EsqliteWrapper
+## Exqlite
 
 W.I.P
 
