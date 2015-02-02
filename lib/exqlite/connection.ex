@@ -1,4 +1,4 @@
-defmodule EsqliteWrapper.Connection do
+defmodule Exqlite.Connection do
   use GenServer
 
   @spec start_link(String.t) :: {:ok, pid} | {:error, any}

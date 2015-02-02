@@ -1,7 +1,7 @@
 ExUnit.start
 
 defmodule TestHelper do
-  alias EsqliteWrapper.Connection, as: DB
+  alias Exqlite.Connection, as: DB
 
   @people [
     {"bob",  22},
@@ -12,7 +12,7 @@ defmodule TestHelper do
   defmacro __using__([]) do
     quote do
       import TestHelper
-      alias EsqliteWrapper.Connection, as: DB
+      alias Exqlite.Connection, as: DB
     end
   end
 

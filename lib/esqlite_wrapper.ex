@@ -1,2 +1,0 @@
-defmodule EsqliteWrapper do
-end
