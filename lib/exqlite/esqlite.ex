@@ -36,7 +36,7 @@ defmodule Exqlite.Esqlite do
     case :esqlite3.step(prepared) do
       :'$busy' -> :busy
       :'$done' -> :done
-      result -> result
+      {:row, row} -> row
     end
   end
 
@@ -58,7 +58,7 @@ defmodule Exqlite.Esqlite do
 
   defp fetch_all(prepared, acc) do
     case try_step(prepared, 0) do
-      :done -> Enum.reverse acc
+      :'$done' -> Enum.reverse acc
       {:row, row} -> fetch_all(prepared, [row | acc])
       error -> error
     end
@@ -69,8 +69,8 @@ defmodule Exqlite.Esqlite do
   end
 
   defp try_step(prepared, tries) do
-    case step(prepared) do
-      :busy ->
+    case :esqlite3.step(prepared) do
+      :'$busy' ->
         :timer.sleep(100 * tries)
         try_step(prepared, tries+1)
       other -> other

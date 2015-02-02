@@ -27,13 +27,13 @@ defmodule ConnectionTest do
     assert expected == DB.query(pid, sql, ["%a%"])
   end
 
-  test "prepare/2 and step/2", context do
+  test "prepare/2 and next/2", context do
     prepared = DB.prepare(pid, "SELECT age FROM test")
 
-    assert {:row, {22}} == DB.step(pid, prepared)
-    assert {:row, {28}} == DB.step(pid, prepared)
-    assert {:row, {33}} == DB.step(pid, prepared)
-    assert :done        == DB.step(pid, prepared)
+    assert {22} == DB.next(pid, prepared)
+    assert {28} == DB.next(pid, prepared)
+    assert {33} == DB.next(pid, prepared)
+    assert :done == DB.next(pid, prepared)
   end
 
   test "prepare/2 and bind/2", context do
@@ -41,9 +41,9 @@ defmodule ConnectionTest do
     prepared = DB.prepare(pid, sql)
 
     DB.bind(pid, prepared, [25])
-    assert {:row, {28}} == DB.step(pid, prepared)
-    assert {:row, {33}} == DB.step(pid, prepared)
-    assert :done        == DB.step(pid, prepared)
+    assert {28} == DB.next(pid, prepared)
+    assert {33} == DB.next(pid, prepared)
+    assert :done == DB.next(pid, prepared)
   end
 
   test "prepare/2 and column_names/2", context do
@@ -57,12 +57,12 @@ defmodule ConnectionTest do
   test "prepare/2 and reset/2", context do
     prepared = DB.prepare(pid, "SELECT name FROM test WHERE name LIKE ?1")
     DB.bind(pid, prepared, ["%a%"])
-    assert {:row, {"mary"}} == DB.step(pid, prepared)
-    assert {:row, {"alex"}} == DB.step(pid, prepared)
+    assert {"mary"} == DB.next(pid, prepared)
+    assert {"alex"} == DB.next(pid, prepared)
 
     DB.reset(pid, prepared)
 
-    assert {:row, {"mary"}} == DB.step(pid, prepared)
+    assert {"mary"} == DB.next(pid, prepared)
   end
 
   test "close/1", context do
