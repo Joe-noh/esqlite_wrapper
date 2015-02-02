@@ -32,9 +32,9 @@ defmodule Exqlite.Connection do
     GenServer.call(pid, {:prepare, sql})
   end
 
-  @spec step(pid, String.t) :: :done | {:row, tuple} | {:error, any}
-  def step(pid, prepared) do
-    GenServer.call(pid, {:step, prepared})
+  @spec next(pid, String.t) :: :done | tuple | {:error, any}
+  def next(pid, prepared) do
+    GenServer.call(pid, {:next, prepared})
   end
 
   @spec reset(pid, String.t) :: :ok | {:error, any}
@@ -123,7 +123,7 @@ defmodule Exqlite.Connection do
     {:reply, prepared, state}
   end
 
-  def handle_call({:step, prepared}, _from, state) do
+  def handle_call({:next, prepared}, _from, state) do
     {:reply, Esqlite.step(prepared), state}
   end
 
