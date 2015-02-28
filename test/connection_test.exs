@@ -31,10 +31,9 @@ defmodule ConnectionTest do
   test "prepare/2 and next/2", c do
     prepared = DB.prepare(c.pid, "SELECT age FROM test")
 
-    assert {22} == DB.next(c.pid, prepared)
-    assert {28} == DB.next(c.pid, prepared)
-    assert {33} == DB.next(c.pid, prepared)
-    assert :done == DB.next(c.pid, prepared)
+    Enum.each [{22}, {28}, {33}, :done], fn expected ->
+      assert expected == DB.next(c.pid, prepared)
+    end
   end
 
   test "prepare/2 and bind/2", c do
@@ -42,9 +41,9 @@ defmodule ConnectionTest do
     prepared = DB.prepare(c.pid, sql)
 
     DB.bind(c.pid, prepared, [25])
-    assert {28} == DB.next(c.pid, prepared)
-    assert {33} == DB.next(c.pid, prepared)
-    assert :done == DB.next(c.pid, prepared)
+    Enum.each [{28}, {33}, :done], fn expected ->
+      assert expected == DB.next(c.pid, prepared)
+    end
   end
 
   test "prepare/2 and column_names/2", c do
