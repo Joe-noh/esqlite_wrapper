@@ -9,19 +9,8 @@ defmodule TestHelper do
     {"alex", 33}
   ]
 
-  defmacro __using__([]) do
-    quote do
-      import TestHelper
-      alias Exqlite.Connection, as: DB
-    end
-  end
-
-  defmacro pid do
-    quote do: var!(context).pid
-  end
-
   def create_table(pid) do
-    DB.query pid, "CREATE TABLE test (name TEXT, age INTEGER)"
+    DB.query(pid, "CREATE TABLE test (name TEXT, age INTEGER)")
   end
 
   def populate_people(pid) do
