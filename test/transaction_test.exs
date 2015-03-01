@@ -14,7 +14,7 @@ defmodule TransactionTest do
     {:ok, [pid: p]}
   end
 
-  @insert_sql "INSERT INTO test VALUES (?1, ?2)"
+  @insert_sql "INSERT INTO test (name, age) VALUES (?1, ?2)"
 
   @beth ["beth", 19]
   @jack ["jack", 25]

@@ -51,7 +51,7 @@ defmodule ServerTest do
     assert {:age} == DB.column_names(c.pid, prepared)
 
     prepared = DB.prepare(c.pid, "SELECT * FROM test")
-    assert {:name, :age} == DB.column_names(c.pid, prepared)
+    assert {:name, :age, :height, :face_image} == DB.column_names(c.pid, prepared)
   end
 
   test "prepare/2 and reset/2", c do
