@@ -23,16 +23,20 @@ defmodule Exqlite.Connection do
 
     case {columns, result} do
       {{:error, _}, _} -> result
-      _other -> build_result(columns, result)
+      _other -> build_map(columns, result)
     end
   end
 
-  defp build_result(columns, result) when is_tuple(columns) do
-    build_result Tuple.to_list(columns), Enum.map(result, &Tuple.to_list/1)
+  defp build_map(columns, rows) when is_tuple(columns) and is_list(rows) do
+    build_map Tuple.to_list(columns), Enum.map(rows, &Tuple.to_list/1)
   end
 
-  defp build_result(columns, result) do
-    for row <- result do
+  defp build_map(columns, rows) when is_tuple(columns) and is_tuple(rows) do
+    build_map Tuple.to_list(columns), [Tuple.to_list(rows)]
+  end
+
+  defp build_map(columns, rows) when is_list(columns) and is_list(rows) do
+    for row <- rows do
       for k_v <- Enum.zip(columns, row), into: %{}, do: k_v
     end
   end
@@ -54,7 +58,13 @@ defmodule Exqlite.Connection do
 
   @spec next(pid, String.t) :: :done | tuple | {:error, any}
   def next(pid, prepared) do
-    GenServer.call(pid, {:next, prepared})
+    columns = GenServer.call(pid, {:column_names, prepared})
+    result = GenServer.call(pid, {:next, prepared})
+
+    case result do
+      :done  -> :done
+      result -> build_map(columns, result) |> List.first
+    end
   end
 
   @spec reset(pid, String.t) :: :ok | {:error, any}

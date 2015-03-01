@@ -31,7 +31,7 @@ defmodule ConnectionTest do
   test "prepare/2 and next/2", c do
     prepared = DB.prepare(c.pid, "SELECT age FROM test")
 
-    Enum.each [{22}, {28}, {33}, :done], fn expected ->
+    Enum.each [%{age: 22}, %{age: 28}, %{age: 33}, :done], fn expected ->
       assert expected == DB.next(c.pid, prepared)
     end
   end
@@ -41,7 +41,7 @@ defmodule ConnectionTest do
     prepared = DB.prepare(c.pid, sql)
 
     DB.bind(c.pid, prepared, [25])
-    Enum.each [{28}, {33}, :done], fn expected ->
+    Enum.each [%{age: 28}, %{age: 33}, :done], fn expected ->
       assert expected == DB.next(c.pid, prepared)
     end
   end
@@ -57,12 +57,12 @@ defmodule ConnectionTest do
   test "prepare/2 and reset/2", c do
     prepared = DB.prepare(c.pid, "SELECT name FROM test WHERE name LIKE ?1")
     DB.bind(c.pid, prepared, ["%a%"])
-    assert {"mary"} == DB.next(c.pid, prepared)
-    assert {"alex"} == DB.next(c.pid, prepared)
+    assert %{name: "mary"} == DB.next(c.pid, prepared)
+    assert %{name: "alex"} == DB.next(c.pid, prepared)
 
     DB.reset(c.pid, prepared)
 
-    assert {"mary"} == DB.next(c.pid, prepared)
+    assert %{name: "mary"} == DB.next(c.pid, prepared)
   end
 
   test "close/1", c do
