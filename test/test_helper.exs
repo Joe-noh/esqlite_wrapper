@@ -10,22 +10,22 @@ defmodule TestHelper do
   ]
 
   def create_table(pid) do
-    DB.query(pid, "CREATE TABLE test (name TEXT, age INTEGER)")
+    DB.execute(pid, "CREATE TABLE IF NOT EXISTS test (name TEXT, age INTEGER)")
   end
 
   def populate_people(pid) do
     Enum.each @people, fn {name, age} ->
-      DB.query(pid, "INSERT INTO test VALUES (?1, ?2)", [name, age])
+      DB.execute(pid, "INSERT INTO test VALUES (?1, ?2)", [name, age])
     end
   end
 
   def count_all(pid) do
-    [{count}] = DB.query(pid, "SELECT COUNT(*) FROM test")
+    [%{count: count}] = DB.query(pid, "SELECT COUNT(*) as count FROM test")
     count
   end
 
   def saved?(pid, params) when is_list(params) do
-    sql = "SELECT COUNT(*) FROM test WHERE name = ?1 AND age = ?2"
-    [{1}] == DB.query(pid, sql, params)
+    sql = "SELECT COUNT(*) as count FROM test WHERE name = ?1 AND age = ?2"
+    [%{count: 1}] == DB.query(pid, sql, params)
   end
 end

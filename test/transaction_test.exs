@@ -23,8 +23,8 @@ defmodule TransactionTest do
 
   test "transaction and commit manually", c do
     DB.begin(c.pid)
-    DB.query(c.pid, @insert_sql, @beth)
-    DB.query(c.pid, @insert_sql, @jack)
+    DB.execute(c.pid, @insert_sql, @beth)
+    DB.execute(c.pid, @insert_sql, @jack)
     DB.commit(c.pid)
 
     assert 5 == count_all(c.pid)
@@ -32,8 +32,8 @@ defmodule TransactionTest do
 
   test "transaction and rollback manually", c do
     DB.begin(c.pid)
-    DB.query(c.pid, @insert_sql, @beth)
-    DB.query(c.pid, @insert_sql, @jack)
+    DB.execute(c.pid, @insert_sql, @beth)
+    DB.execute(c.pid, @insert_sql, @jack)
     DB.rollback(c.pid)
 
     assert 3 == count_all(c.pid)
@@ -46,8 +46,8 @@ defmodule TransactionTest do
 
   test "success transaction/2", c do
     DB.transaction c.pid, fn ->
-      DB.query(c.pid, @insert_sql, @beth)
-      DB.query(c.pid, @insert_sql, @jack)
+      DB.execute(c.pid, @insert_sql, @beth)
+      DB.execute(c.pid, @insert_sql, @jack)
     end
 
     assert 5 == count_all(c.pid)
@@ -55,8 +55,8 @@ defmodule TransactionTest do
 
   test "failed transaction/2", c do
     result = DB.transaction c.pid, fn ->
-      DB.query(c.pid, @insert_sql, @beth)
-      DB.query(c.pid, @insert_sql, @jack)
+      DB.execute(c.pid, @insert_sql, @beth)
+      DB.execute(c.pid, @insert_sql, @jack)
       raise RuntimeError, message: "Oops"
     end
 
@@ -66,9 +66,9 @@ defmodule TransactionTest do
 
   test "nested transaction", c do
     DB.transaction c.pid, fn ->
-      DB.query(c.pid, @insert_sql, @beth)
+      DB.execute(c.pid, @insert_sql, @beth)
       DB.transaction c.pid, fn ->
-        DB.query(c.pid, @insert_sql, @jack)
+        DB.execute(c.pid, @insert_sql, @jack)
         raise "Oops"
       end
     end
@@ -79,13 +79,13 @@ defmodule TransactionTest do
 
   test "deeply nested transaction", c do
     DB.transaction c.pid, fn ->
-      DB.query(c.pid, @insert_sql, @beth)
+      DB.execute(c.pid, @insert_sql, @beth)
       DB.transaction c.pid, fn ->
-        DB.transaction c.pid, fn -> DB.query(c.pid, @insert_sql, @jack) end
-        DB.query(c.pid, @insert_sql, @nick)
+        DB.transaction c.pid, fn -> DB.execute(c.pid, @insert_sql, @jack) end
+        DB.execute(c.pid, @insert_sql, @nick)
         raise "Oops"
       end
-      DB.query(c.pid, @insert_sql, @anne)
+      DB.execute(c.pid, @insert_sql, @anne)
     end
 
     assert saved?(c.pid, @beth)

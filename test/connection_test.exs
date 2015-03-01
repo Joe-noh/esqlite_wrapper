@@ -16,14 +16,14 @@ defmodule ConnectionTest do
 
   test "query/2", c do
     sql = "SELECT age FROM test ORDER BY age DESC"
-    expected = [{33}, {28}, {22}]
+    expected = [%{age: 33}, %{age: 28}, %{age: 22}]
 
     assert expected == DB.query(c.pid, sql)
   end
 
   test "query/3", c do
     sql = "SELECT name FROM test WHERE name LIKE ?1"
-    expected = [{"mary"}, {"alex"}]
+    expected = [%{name: "mary"}, %{name: "alex"}]
 
     assert expected == DB.query(c.pid, sql, ["%a%"])
   end

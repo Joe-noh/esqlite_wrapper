@@ -7,14 +7,34 @@ defmodule Exqlite.Connection do
     GenServer.start_link(__MODULE__, [path])
   end
 
-  @spec query(pid, String.t) :: [tuple]
+  @spec query(pid, String.t) :: [map]
   def query(pid, sql) do
-    GenServer.call(pid, {:query, sql})
+    do_query pid, sql, GenServer.call(pid, {:query, sql})
   end
 
-  @spec query(pid, String.t, [any]) :: [tuple]
+  @spec query(pid, String.t, [any]) :: [map]
   def query(pid, sql, args) do
-    GenServer.call(pid, {:query, sql, args})
+    do_query pid, sql, GenServer.call(pid, {:query, sql, args})
+  end
+
+  defp do_query(pid, sql, result) do
+    prepared = GenServer.call(pid, {:prepare, sql})
+    columns  = GenServer.call(pid, {:column_names, prepared})
+
+    case {columns, result} do
+      {{:error, _}, _} -> result
+      _other -> build_result(columns, result)
+    end
+  end
+
+  defp build_result(columns, result) when is_tuple(columns) do
+    build_result Tuple.to_list(columns), Enum.map(result, &Tuple.to_list/1)
+  end
+
+  defp build_result(columns, result) do
+    for row <- result do
+      for k_v <- Enum.zip(columns, row), into: %{}, do: k_v
+    end
   end
 
   @spec execute(pid, String.t) :: :ok | {:error, any}
