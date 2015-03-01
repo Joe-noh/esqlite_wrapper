@@ -1,7 +1,7 @@
 ExUnit.start
 
 defmodule TestHelper do
-  alias Exqlite.Connection, as: DB
+  alias Exqlite.Server, as: DB
 
   @people [
     {"bob",  22},

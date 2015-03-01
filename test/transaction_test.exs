@@ -1,7 +1,7 @@
 defmodule TransactionTest do
   use ExUnit.Case
   import TestHelper
-  alias Exqlite.Connection, as: DB
+  alias Exqlite.Server, as: DB
 
   setup do
     {:ok, p} = DB.start_link(":memory:")
