@@ -1,4 +1,4 @@
-defmodule Exqlite.Connection do
+defmodule Exqlite.Server do
   use GenServer
   alias Exqlite.Esqlite
 

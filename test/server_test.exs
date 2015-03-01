@@ -1,7 +1,7 @@
-defmodule ConnectionTest do
+defmodule ServerTest do
   use ExUnit.Case
   import TestHelper
-  alias Exqlite.Connection, as: DB
+  alias Exqlite.Server, as: DB
 
   setup do
     {:ok, pid} = DB.start_link(":memory:")
