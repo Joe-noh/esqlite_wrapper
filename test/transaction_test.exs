@@ -4,14 +4,14 @@ defmodule TransactionTest do
   alias Exqlite.Server, as: DB
 
   setup do
-    {:ok, p} = DB.start_link(":memory:")
+    {:ok, pid} = DB.start_link(":memory:")
 
-    create_table p
-    populate_people p
+    create_table pid
+    populate_people pid
 
-    on_exit fn -> DB.close(p) end
+    on_exit fn -> DB.close(pid) end
 
-    {:ok, [pid: p]}
+    {:ok, [pid: pid]}
   end
 
   @insert_sql "INSERT INTO test (name, age) VALUES (?1, ?2)"
