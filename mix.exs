@@ -13,6 +13,9 @@ defmodule Exqlite.Mixfile do
   end
 
   defp deps do
-    [{:esqlite, github: "mmzeeman/esqlite", ref: "9967ced039246f75f66a3891f584b1f150e56463"}]
+    [
+      {:esqlite, github: "mmzeeman/esqlite"},
+      {:ecto, "~> 0.8"}
+    ]
   end
 end
