@@ -2,8 +2,8 @@ defmodule Exqlite.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :esqlite_wrapper,
-     version: "0.1.0",
+    [app: :exqlite,
+     version: "0.2.0",
      elixir: "~> 1.0",
      deps: deps]
   end
@@ -15,7 +15,7 @@ defmodule Exqlite.Mixfile do
   defp deps do
     [
       {:esqlite, github: "mmzeeman/esqlite"},
-      {:ecto, "~> 0.8"}
+      {:ecto, "~> 0.9"}
     ]
   end
 end
