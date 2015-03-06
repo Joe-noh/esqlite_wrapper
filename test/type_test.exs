@@ -3,7 +3,7 @@ defmodule TypeTest do
   import TestHelper
   alias Exqlite.Server, as: DB
 
-  setup_all do
+  setup do
     {:ok, pid} = DB.start_link(":memory:")
 
     create_table pid
