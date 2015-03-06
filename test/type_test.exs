@@ -9,11 +9,11 @@ defmodule TypeTest do
     create_table pid
     populate_people pid
 
-    row = DB.query(pid, "SELECT * FROM test LIMIT 1") |> List.first
+    {:ok, row} = DB.query(pid, "SELECT * FROM test LIMIT 1")
 
     on_exit fn -> DB.close(pid) end
 
-    {:ok, [row: row]}
+    {:ok, [row: hd(row)]}
   end
 
   test "integer", c do

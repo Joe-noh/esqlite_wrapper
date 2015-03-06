@@ -23,12 +23,12 @@ defmodule TestHelper do
   end
 
   def count_all(pid) do
-    [%{count: count}] = DB.query(pid, "SELECT COUNT(*) as count FROM test")
+    [%{count: count}] = DB.query!(pid, "SELECT COUNT(*) as count FROM test")
     count
   end
 
   def saved?(pid, params) when is_list(params) do
     sql = "SELECT COUNT(*) as count FROM test WHERE name = ?1 AND age = ?2"
-    [%{count: 1}] == DB.query(pid, sql, params)
+    [%{count: 1}] == DB.query!(pid, sql, params)
   end
 end
