@@ -1,29 +1,48 @@
 defmodule Exqlite.Server do
   use GenServer
   alias Exqlite.Esqlite
+  alias Exqlite.Error
 
   @spec start_link(String.t) :: {:ok, pid} | {:error, any}
   def start_link(path) do
     GenServer.start_link(__MODULE__, [path])
   end
 
-  @spec query(pid, String.t) :: [map]
+  @spec query(pid, String.t) :: {:ok, [map]} | {:error, any}
   def query(pid, sql) do
-    do_query pid, sql, GenServer.call(pid, {:query, sql})
+    do_query(pid, sql, {:query, sql})
   end
 
-  @spec query(pid, String.t, [any]) :: [map]
+  @spec query(pid, String.t, [any]) :: {:ok, [map]} | {:error, any}
   def query(pid, sql, args) do
-    do_query pid, sql, GenServer.call(pid, {:query, sql, args})
+    do_query(pid, sql, {:query, sql, args})
   end
 
-  defp do_query(pid, sql, result) do
-    prepared = GenServer.call(pid, {:prepare, sql})
-    columns  = GenServer.call(pid, {:column_names, prepared})
+  @spec query!(pid, String.t) :: [map] | no_return
+  def query!(pid, sql) do
+    case do_query(pid, sql, {:query, sql}) do
+      {:ok, result} -> result
+      {:error, message} -> raise Error, message: message
+    end
+  end
 
-    case {columns, result} do
-      {{:error, _}, _} -> result
-      _other -> build_map(columns, result)
+  @spec query!(pid, String.t, [any]) :: [map] | no_return
+  def query!(pid, sql, args) do
+    case do_query(pid, sql, {:query, sql, args}) do
+      {:ok, result} -> result
+      {:error, message} -> raise Error, message: message
+    end
+  end
+
+  @spec do_query(pid, String.t, tuple) :: {:ok, [map]} | {:error, any}
+  defp do_query(pid, sql, call_args) do
+    case prepare(pid, sql) do
+      {:ok, prepared} ->
+        case column_names(pid, prepared) do
+          {:error, error} -> {:error, error}
+          {:ok, columns}  -> {:ok, build_map(columns, GenServer.call(pid, call_args))}
+        end
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -56,14 +75,16 @@ defmodule Exqlite.Server do
     GenServer.call(pid, {:prepare, sql})
   end
 
-  @spec next(pid, String.t) :: :done | tuple | {:error, any}
+  @spec next(pid, String.t) :: :done | :busy | {:ok, tuple} | {:error, any}
   def next(pid, prepared) do
-    columns = GenServer.call(pid, {:column_names, prepared})
-    result = GenServer.call(pid, {:next, prepared})
-
-    case result do
-      :done  -> :done
-      result -> build_map(columns, result) |> List.first
+    case GenServer.call(pid, {:column_names, prepared}) do
+      {:ok, columns} ->
+        case GenServer.call(pid, {:next, prepared}) do
+          :done  -> :done
+          :busy  -> :busy
+          result -> {:ok, build_map(columns, result) |> hd}
+        end
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -149,8 +170,7 @@ defmodule Exqlite.Server do
   end
 
   def handle_call({:prepare, sql}, _from, %{db: db} = state) do
-    {:ok, prepared} = Esqlite.prepare(db, sql)
-    {:reply, prepared, state}
+    {:reply, Esqlite.prepare(db, sql), state}
   end
 
   def handle_call({:next, prepared}, _from, state) do

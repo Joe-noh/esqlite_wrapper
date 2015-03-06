@@ -29,7 +29,13 @@ defmodule Exqlite.Esqlite do
   end
 
   def prepare(db, sql) do
-    to_chars(sql) |> :esqlite3.prepare(db)
+    to_chars(sql)
+    |> :esqlite3.prepare(db)
+    |> case do
+      {:error, {:sqlite_error, e}} -> {:error, to_string(e)}
+      {:error, e} -> {:error, to_string(e)}
+      other -> other  # {:ok, something}
+    end
   end
 
   def step(prepared) do
@@ -49,7 +55,11 @@ defmodule Exqlite.Esqlite do
   end
 
   def column_names(prepared) do
-    :esqlite3.column_names(prepared)
+    case :esqlite3.column_names(prepared) do
+      {:sqlite_error, e} -> {:error, to_string(e)}
+      {:error, e} -> {:error, to_string(e)}
+      result -> {:ok, result}
+    end
   end
 
   defp fetch_all(prepared) do
@@ -60,7 +70,7 @@ defmodule Exqlite.Esqlite do
     case try_step(prepared, 0) do
       :'$done' -> Enum.reverse acc
       {:row, row} -> fetch_all(prepared, [row | acc])
-      error -> error
+      {:error, e} -> {:error, to_string(e)}
     end
   end
 
