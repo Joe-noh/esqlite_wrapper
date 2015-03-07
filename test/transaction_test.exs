@@ -108,7 +108,7 @@ defmodule TransactionTest do
   test "drop table can be rolled-back", c do
     DB.transaction c.pid, fn ->
       DB.transaction c.pid, fn ->
-        DB.execute("DROP TABLE test")
+        DB.execute(c.pid, "DROP TABLE test")
         raise "Oops"
       end
     end
@@ -119,7 +119,7 @@ defmodule TransactionTest do
   test "alter table can be rolled-back", c do
     DB.transaction c.pid, fn ->
       DB.transaction c.pid, fn ->
-        DB.execute("ALTER TABLE test RENAME TO aaaa")
+        DB.execute(c.pid, "ALTER TABLE test RENAME TO aaaa")
         raise "Oops"
       end
     end
