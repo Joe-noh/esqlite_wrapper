@@ -93,4 +93,39 @@ defmodule TransactionTest do
     refute saved?(c.pid, @nick)
     assert saved?(c.pid, @anne)
   end
+
+  test "create table can be rolled-back", c do
+    DB.transaction c.pid, fn ->
+      DB.execute(c.pid, "CREATE TABLE test2 (name TEXT)")
+      raise "Oops"
+    end
+
+    assert_raise Exqlite.Error, ~r/no such table: test2/, fn ->
+      DB.query!(c.pid, "SELECT * FROM test2")
+    end
+  end
+
+  test "drop table can be rolled-back", c do
+    DB.transaction c.pid, fn ->
+      DB.transaction c.pid, fn ->
+        DB.execute("DROP TABLE test")
+        raise "Oops"
+      end
+    end
+
+    assert 3 == count_all(c.pid)  # confirm that the table 'test' still alive
+  end
+
+  test "alter table can be rolled-back", c do
+    DB.transaction c.pid, fn ->
+      DB.transaction c.pid, fn ->
+        DB.execute("ALTER TABLE test RENAME TO aaaa")
+        raise "Oops"
+      end
+    end
+
+    assert_raise Exqlite.Error, ~r/no such table: aaaa/, fn ->
+      DB.query!(c.pid, "SELECT * FROM aaaa")
+    end
+  end
 end
