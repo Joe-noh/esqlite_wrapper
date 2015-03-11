@@ -3,6 +3,8 @@
 erl_crash.dump
 *.ez
 
+/priv
+
 *.sqlite3
 *.sqlite
 *.db
