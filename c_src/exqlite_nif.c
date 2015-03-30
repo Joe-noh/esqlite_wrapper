@@ -3,8 +3,6 @@
 #include <string.h>
 #include <sqlite3.h>
 
-#include <stdio.h>  // for debugging
-
 #include "utils.h"
 
 typedef struct {
@@ -19,6 +17,8 @@ static ERL_NIF_TERM fetch_column_names(ErlNifEnv*, sqlite3_stmt*, int);
 static ERL_NIF_TERM fetch_row(ErlNifEnv*, sqlite3_stmt*, int);
 static ERL_NIF_TERM fetch_text(ErlNifEnv*, sqlite3_stmt*, int);
 static ERL_NIF_TERM fetch_blob(ErlNifEnv*, sqlite3_stmt*, int);
+static ERL_NIF_TERM fetch_int(ErlNifEnv*, sqlite3_stmt*, int);
+static ERL_NIF_TERM fetch_double(ErlNifEnv*, sqlite3_stmt*, int);
 
 static ErlNifResourceType *exq_database_type = NULL;
 static ErlNifResourceType *exq_prepared_type = NULL;
@@ -29,9 +29,7 @@ static void exq_database_destructor(ErlNifEnv* env, void* arg) {
 static void exq_prepared_destructor(ErlNifEnv* env, void* arg) {
 }
 
-/**
- * open(char_list) :: {:ok, db}
- */
+// open(char_list) :: {:ok, db}
 static ERL_NIF_TERM exq_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     exq_database* db = enif_alloc_resource(exq_database_type, sizeof(exq_database));
 
@@ -49,9 +47,7 @@ static ERL_NIF_TERM exq_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     return error_message_tuple(env, sqlite3_errstr(code));
 }
 
-/*
- * close(db) :: :ok
- */
+// close(db) :: :ok
 static ERL_NIF_TERM exq_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     exq_database* db;
     enif_get_resource(env, argv[0], exq_database_type, (void**)&db);
@@ -64,9 +60,8 @@ static ERL_NIF_TERM exq_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
     return enif_make_int(env, code);
 }
 
-/*
- * prepare(db, char_list) :: stmt | {:error, message}
- */
+
+// prepare(db, char_list) :: stmt | {:error, message}
 static ERL_NIF_TERM exq_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     exq_prepared* ps = enif_alloc_resource(exq_prepared_type, sizeof(exq_prepared));
 
@@ -88,9 +83,8 @@ static ERL_NIF_TERM exq_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
     return error_message_tuple(env, sqlite3_errstr(code));
 }
 
-/*
- * step(stmt) :: {:ok, map} | :done | :busy
- */
+
+// step(stmt) :: {:ok, map} | :done | :busy
 static ERL_NIF_TERM exq_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     exq_prepared* ps;
     enif_get_resource(env, argv[0], exq_prepared_type, (void**)&ps);
@@ -142,21 +136,11 @@ static ERL_NIF_TERM fetch_row(ErlNifEnv* env, sqlite3_stmt* stmt, int num_column
     for (int i=0; i < num_columns; i++) {
         int type = sqlite3_column_type(stmt, i);
         switch (type) {
-            case SQLITE_TEXT:
-                row[i] = fetch_text(env, stmt, i);
-                break;
-            case SQLITE_BLOB:
-                row[i] = fetch_blob(env, stmt, i);
-                break;
-            case SQLITE_INTEGER:
-                row[i] = enif_make_int(env, sqlite3_column_int(stmt, i));
-                break;
-            case SQLITE_FLOAT:
-                row[i] = enif_make_double(env, sqlite3_column_double(stmt, i));
-                break;
-            case SQLITE_NULL:
-                row[i] = make_atom(env, "nil");
-                break;
+            case SQLITE_TEXT:    row[i] = fetch_text(env, stmt, i);   break;
+            case SQLITE_BLOB:    row[i] = fetch_blob(env, stmt, i);   break;
+            case SQLITE_INTEGER: row[i] = fetch_int(env, stmt, i);    break;
+            case SQLITE_FLOAT:   row[i] = fetch_double(env, stmt, i); break;
+            case SQLITE_NULL:    row[i] = make_atom(env, "nil");      break;
         }
     }
 
@@ -181,6 +165,15 @@ static ERL_NIF_TERM fetch_blob(ErlNifEnv* env, sqlite3_stmt* stmt, int index) {
     return nif_blob;
 }
 
+static ERL_NIF_TERM fetch_int(ErlNifEnv* env, sqlite3_stmt* stmt, int index) {
+    return enif_make_int(env, sqlite3_column_int(stmt, index));
+}
+
+static ERL_NIF_TERM fetch_double(ErlNifEnv* env, sqlite3_stmt* stmt, int index) {
+    return enif_make_double(env, sqlite3_column_double(stmt, index));
+}
+
+// bind_text(stmt, index, text) :: :ok | {:error, message}
 static ERL_NIF_TERM exq_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     exq_prepared* ps;
     enif_get_resource(env, argv[0], exq_prepared_type, (void**)&ps);
@@ -193,13 +186,10 @@ static ERL_NIF_TERM exq_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM a
 
     int code = sqlite3_bind_text(ps->stmt, index, sql, length, SQLITE_TRANSIENT);
 
-    if (code == SQLITE_OK) {
-        return make_atom(env, "ok");
-    }
-
-    return error_message_tuple(env, sqlite3_errstr(code));
+    return ok_or_error_tuple(env, code);
 }
 
+// bind_blob(stmt, index, blob) :: :ok | {:error, message}
 static ERL_NIF_TERM exq_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     exq_prepared* ps;
     enif_get_resource(env, argv[0], exq_prepared_type, (void**)&ps);
@@ -212,13 +202,10 @@ static ERL_NIF_TERM exq_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM a
 
     int code = sqlite3_bind_blob(ps->stmt, index, (void*)(blob.data), blob.size, SQLITE_TRANSIENT);
 
-    if (code == SQLITE_OK) {
-        return make_atom(env, "ok");
-    }
-
-    return error_message_tuple(env, sqlite3_errstr(code));
+    return ok_or_error_tuple(env, code);
 }
 
+// bind_int(stmt, index, integer) :: :ok | {:error, message}
 static ERL_NIF_TERM exq_bind_int(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     exq_prepared* ps;
     enif_get_resource(env, argv[0], exq_prepared_type, (void**)&ps);
@@ -231,13 +218,10 @@ static ERL_NIF_TERM exq_bind_int(ErlNifEnv* env, int argc, const ERL_NIF_TERM ar
 
     int code = sqlite3_bind_int(ps->stmt, index, value);
 
-    if (code == SQLITE_OK) {
-        return make_atom(env, "ok");
-    }
-
-    return error_message_tuple(env, sqlite3_errstr(code));
+    return ok_or_error_tuple(env, code);
 }
 
+// bind_float(stmt, index, float) :: :ok | {:error, message}
 static ERL_NIF_TERM exq_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     exq_prepared* ps;
     enif_get_resource(env, argv[0], exq_prepared_type, (void**)&ps);
@@ -250,11 +234,7 @@ static ERL_NIF_TERM exq_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM 
 
     int code = sqlite3_bind_double(ps->stmt, index, value);
 
-    if (code == SQLITE_OK) {
-        return make_atom(env, "ok");
-    }
-
-    return error_message_tuple(env, sqlite3_errstr(code));
+    return ok_or_error_tuple(env, code);
 }
 
 static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info) {

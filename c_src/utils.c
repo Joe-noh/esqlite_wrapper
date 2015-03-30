@@ -1,7 +1,8 @@
 #include <erl_nif.h>
 #include <string.h>
+#include <sqlite3.h>
 
-ERL_NIF_TERM make_atom(ErlNifEnv *env, const char *name) {
+ERL_NIF_TERM make_atom(ErlNifEnv* env, const char* name) {
     ERL_NIF_TERM atom;
 
     if (enif_make_existing_atom(env, name, &atom, ERL_NIF_LATIN1)) {
@@ -11,20 +12,28 @@ ERL_NIF_TERM make_atom(ErlNifEnv *env, const char *name) {
     return enif_make_atom(env, name);
 }
 
-ERL_NIF_TERM ok_tuple(ErlNifEnv *env, ERL_NIF_TERM term) {
+ERL_NIF_TERM ok_tuple(ErlNifEnv* env, ERL_NIF_TERM term) {
     return enif_make_tuple2(env, make_atom(env, "ok"), term);
 }
 
-ERL_NIF_TERM ok_triple(ErlNifEnv *env, ERL_NIF_TERM term1, ERL_NIF_TERM term2) {
+ERL_NIF_TERM ok_triple(ErlNifEnv* env, ERL_NIF_TERM term1, ERL_NIF_TERM term2) {
     return enif_make_tuple3(env, make_atom(env, "ok"), term1, term2);
 }
 
-ERL_NIF_TERM error_tuple(ErlNifEnv *env, ERL_NIF_TERM term) {
+ERL_NIF_TERM error_tuple(ErlNifEnv* env, ERL_NIF_TERM term) {
     return enif_make_tuple2(env, make_atom(env, "error"), term);
 }
 
-ERL_NIF_TERM error_message_tuple(ErlNifEnv *env, const char *error) {
+ERL_NIF_TERM error_message_tuple(ErlNifEnv* env, const char* error) {
     return error_tuple(env, enif_make_string(env, error, ERL_NIF_LATIN1));
+}
+
+ERL_NIF_TERM ok_or_error_tuple(ErlNifEnv* env, int code) {
+    if (code == SQLITE_OK) {
+        return make_atom(env, "ok");
+    }
+
+    return error_message_tuple(env, sqlite3_errstr(code));
 }
 
 unsigned int get_list_length(ErlNifEnv* env, ERL_NIF_TERM list) {
